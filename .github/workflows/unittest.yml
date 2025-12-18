@@ -49,8 +49,6 @@ jobs:
         if: matrix.db == 'mysql'
         working-directory: docker-exment
         run: |          
-          sleep 30
-          
           docker compose -f docker-compose.yml -f docker-compose.mysql.yml \
             exec -T mysql mysql --version
 
