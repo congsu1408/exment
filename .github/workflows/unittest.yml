@@ -52,7 +52,7 @@ jobs:
           sleep 30
           
           docker compose -f docker-compose.yml -f docker-compose.mysql.yml \
-            exec -T -e MYSQL_PWD=secret mysql mysql -u root -N -s -e "SELECT VERSION();"
+            exec -T mysql mysql --version
 
       - name: copy compose.dev.json
         working-directory: docker-exment
