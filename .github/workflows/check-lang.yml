@@ -46,7 +46,12 @@ jobs:
       - name: Make mysql Initialize
         working-directory: docker-exment
         run: |
-          make mysql-init
+          docker compose -f docker-compose.yml exec -T php chown www-data:www-data -R .
+          docker compose -f docker-compose.yml exec -T php sh -lc "git config --global --add safe.directory /var/www/exment; git config --global --add safe.directory /var/www/exment/exment || true"
+          docker compose -f docker-compose.yml exec -T -e COMPOSER_PROCESS_TIMEOUT=600 php composer install
+          docker compose -f docker-compose.yml exec -T php cp .env.mysql .env
+          docker compose -f docker-compose.yml exec -T php php artisan key:generate
+          docker compose -f docker-compose.yml exec -T php php artisan passport:key --force
 
       - name: Run artisan exment:checklang
         working-directory: docker-exment

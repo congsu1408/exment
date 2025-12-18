@@ -58,10 +58,28 @@ jobs:
           docker compose -f docker-compose.yml exec -T php cp composer.dev.json composer.json
           docker compose -f docker-compose.yml exec -T php cp composer.dev.lock composer.lock
 
-      - name: Make ${{ matrix.db }} Initialize
+      - name: Initialize (${{ matrix.db }})
         working-directory: docker-exment
         run: |
-          make ${{ matrix.db }}-init
+          if [ "${{ matrix.db }}" = "sqlsrv" ]; then
+            sleep 30
+            docker compose -f docker-compose.sqlsrv.yml run -T sqlsrv-create-db
+          fi
+
+          docker compose -f docker-compose.yml exec -T php chown www-data:www-data -R .
+          docker compose -f docker-compose.yml exec -T php sh -lc "git config --global --add safe.directory /var/www/exment; git config --global --add safe.directory /var/www/exment/exment || true"
+          docker compose -f docker-compose.yml exec -T -e COMPOSER_PROCESS_TIMEOUT=600 php composer install
+
+          if [ "${{ matrix.db }}" = "mysql" ]; then
+            docker compose -f docker-compose.yml exec -T php cp .env.mysql .env
+          elif [ "${{ matrix.db }}" = "mariadb" ]; then
+            docker compose -f docker-compose.yml exec -T php cp .env.mariadb .env
+          elif [ "${{ matrix.db }}" = "sqlsrv" ]; then
+            docker compose -f docker-compose.yml exec -T php cp .env.sqlsrv .env
+          fi
+
+          docker compose -f docker-compose.yml exec -T php php artisan key:generate
+          docker compose -f docker-compose.yml exec -T php php artisan passport:key --force
 
       - name: PHPUnit Test
         working-directory: docker-exment
