@@ -45,6 +45,24 @@ jobs:
         run: |
           make ${{ matrix.db }}-up
 
+      - name: Wait for MySQL to be ready
+        if: matrix.db == 'mysql'
+        working-directory: docker-exment
+        run: |
+          ready=0
+          for i in $(seq 1 30); do
+            if docker compose exec -T mysql mysqladmin ping -uroot -proot --silent; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "MySQL is not ready after waiting" >&2
+            docker compose ps
+            exit 1
+          fi
+
       - name: Verify MySQL Version
         if: matrix.db == 'mysql'
         working-directory: docker-exment
