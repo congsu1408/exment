@@ -82,6 +82,16 @@ jobs:
           docker compose -f docker-compose.yml exec -T php php artisan key:generate
           docker compose -f docker-compose.yml exec -T php php artisan passport:key --force
 
+      - name: Wait for DB ready
+        if: matrix.db == 'mysql' || matrix.db == 'mariadb'
+        working-directory: docker-exment
+        run: |
+          if [ "${{ matrix.db }}" = "mysql" ]; then
+            docker compose -f docker-compose.yml -f docker-compose.mysql.yml exec -T mysql sh -lc 'for i in $(seq 1 60); do mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent && exit 0; sleep 2; done; exit 1'
+          else
+            docker compose -f docker-compose.yml -f docker-compose.mariadb.yml exec -T mariadb sh -lc 'for i in $(seq 1 60); do mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent && exit 0; sleep 2; done; exit 1'
+          fi
+
       - name: PHPUnit Test
         working-directory: docker-exment
         run: |
