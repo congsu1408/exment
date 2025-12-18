@@ -49,21 +49,14 @@ jobs:
         if: matrix.db == 'mysql'
         working-directory: docker-exment
         run: |
-          echo "--- 1. Verify Container Status ---"
-                docker compose ps
-                
-                echo "--- 2. Wait for MySQL startup (30s) ---"
-                sleep 30
-                
-                echo "--- 3. Check status again ---"
-                if [ -z "$(docker compose ps -q mysql | xargs docker inspect -f '{{.State.Running}}' | grep 'true')" ]; then
-                 echo "::error::MySQL Container stopped! Check logs below:"
-                 docker compose logs mysql
-                 exit 1
-                fi
-
-                echo "--- 4. Check Version ---"
-                docker compose -f docker-compose.yml exec -T mysql mysql -u root -psecret -e "SELECT VERSION();"
+          echo "=========================================="
+          echo "🔎 CHECKING MYSQL SERVER VERSION..."
+          echo "=========================================="
+          
+          sleep 30
+          
+          docker compose -f docker-compose.yml -f docker-compose.mysql.yml \
+            exec -T mysql mysql -u root -psecret -e "SELECT VERSION();"
 
       - name: copy compose.dev.json
         working-directory: docker-exment
