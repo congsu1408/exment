@@ -45,6 +45,13 @@ jobs:
         run: |
           make ${{ matrix.db }}-up
 
+      - name: Verify MySQL Version
+        if: matrix.db == 'mysql'
+        working-directory: docker-exment
+        run: |
+          docker compose exec -T mysql mysql -V
+          docker compose exec -T mysql mysql -u root -proot -e "SELECT VERSION();"
+
       - name: copy compose.dev.json
         working-directory: docker-exment
         run: |
