@@ -49,39 +49,44 @@ jobs:
         if: matrix.db == 'mysql'
         working-directory: docker-exment
         run: |
-          MYSQL_ROOT_PASSWORD="$(docker compose exec -T mysql printenv MYSQL_ROOT_PASSWORD | tr -d '\r')"
-          ready=0
-          for i in $(seq 1 30); do
-            if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
-              if docker compose exec -T -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql mysqladmin ping -uroot --silent; then
-                ready=1
-                break
-              fi
-            else
-              if docker compose exec -T mysql mysqladmin ping -uroot --silent; then
-                ready=1
-                break
-              fi
-            fi
-            sleep 2
-          done
-          if [ "$ready" -ne 1 ]; then
-            echo "MySQL is not ready after waiting" >&2
+          cid="$(docker compose ps -q mysql)"
+          if [ -z "$cid" ]; then
+            echo "MySQL container not found" >&2
             docker compose ps
             exit 1
           fi
+
+          for i in $(seq 1 60); do
+            health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$cid" 2>/dev/null || true)"
+            status="$(docker inspect -f '{{.State.Status}}' "$cid" 2>/dev/null || true)"
+
+            if [ "$health" = "healthy" ]; then
+              exit 0
+            fi
+
+            if [ -z "$health" ] && [ "$status" = "running" ]; then
+              if docker logs "$cid" 2>/dev/null | tail -n 100 | grep -qi "ready for connections"; then
+                exit 0
+              fi
+            fi
+
+            if [ $((i % 10)) -eq 0 ]; then
+              echo "Waiting for MySQL... status=$status health=${health:-n/a} (try $i/60)"
+            fi
+            sleep 2
+          done
+
+          echo "MySQL is not ready after waiting" >&2
+          docker compose ps
+          docker logs "$cid" | tail -n 200
+          exit 1
 
       - name: Verify MySQL Version
         if: matrix.db == 'mysql'
         working-directory: docker-exment
         run: |
           docker compose exec -T mysql mysql -V
-          MYSQL_ROOT_PASSWORD="$(docker compose exec -T mysql printenv MYSQL_ROOT_PASSWORD | tr -d '\r')"
-          if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
-            docker compose exec -T -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql mysql -uroot -e "SELECT VERSION();"
-          else
-            docker compose exec -T mysql mysql -uroot -e "SELECT VERSION();"
-          fi
+          docker compose exec -T mysql mysqladmin --version || true
 
       - name: copy compose.dev.json
         working-directory: docker-exment
