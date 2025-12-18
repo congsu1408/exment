@@ -49,11 +49,19 @@ jobs:
         if: matrix.db == 'mysql'
         working-directory: docker-exment
         run: |
+          MYSQL_ROOT_PASSWORD="$(docker compose exec -T mysql printenv MYSQL_ROOT_PASSWORD | tr -d '\r')"
           ready=0
           for i in $(seq 1 30); do
-            if docker compose exec -T mysql mysqladmin ping -uroot -proot --silent; then
-              ready=1
-              break
+            if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
+              if docker compose exec -T -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql mysqladmin ping -uroot --silent; then
+                ready=1
+                break
+              fi
+            else
+              if docker compose exec -T mysql mysqladmin ping -uroot --silent; then
+                ready=1
+                break
+              fi
             fi
             sleep 2
           done
@@ -68,7 +76,12 @@ jobs:
         working-directory: docker-exment
         run: |
           docker compose exec -T mysql mysql -V
-          docker compose exec -T mysql mysql -u root -proot -e "SELECT VERSION();"
+          MYSQL_ROOT_PASSWORD="$(docker compose exec -T mysql printenv MYSQL_ROOT_PASSWORD | tr -d '\r')"
+          if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
+            docker compose exec -T -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql mysql -uroot -e "SELECT VERSION();"
+          else
+            docker compose exec -T mysql mysql -uroot -e "SELECT VERSION();"
+          fi
 
       - name: copy compose.dev.json
         working-directory: docker-exment
