@@ -48,15 +48,11 @@ jobs:
       - name: Verify MySQL Server Version
         if: matrix.db == 'mysql'
         working-directory: docker-exment
-        run: |
-          echo "=========================================="
-          echo "🔎 CHECKING MYSQL SERVER VERSION..."
-          echo "=========================================="
-          
+        run: |          
           sleep 30
           
           docker compose -f docker-compose.yml -f docker-compose.mysql.yml \
-            exec -T mysql mysql -u root -psecret -e "SELECT VERSION();"
+            exec -T -e MYSQL_PWD=secret mysql mysql -u root -N -s -e "SELECT VERSION();"
 
       - name: copy compose.dev.json
         working-directory: docker-exment
