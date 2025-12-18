@@ -72,8 +72,10 @@ jobs:
 
           if [ "${{ matrix.db }}" = "mysql" ]; then
             docker compose -f docker-compose.yml exec -T php cp .env.mysql .env
+            docker compose -f docker-compose.yml exec -T php sh -lc "printf '\nDB_SSL_MODE=DISABLED\n' >> .env"
           elif [ "${{ matrix.db }}" = "mariadb" ]; then
             docker compose -f docker-compose.yml exec -T php cp .env.mariadb .env
+            docker compose -f docker-compose.yml exec -T php sh -lc "printf '\nDB_SSL_MODE=DISABLED\n' >> .env"
           elif [ "${{ matrix.db }}" = "sqlsrv" ]; then
             docker compose -f docker-compose.yml exec -T php cp .env.sqlsrv .env
             docker compose -f docker-compose.yml exec -T php sh -lc "printf '\nDB_ENCRYPT=yes\nDB_TRUST_SERVER_CERTIFICATE=yes\n' >> .env"
