@@ -17,6 +17,13 @@ class MySqlConnection extends BaseConnection implements ConnectionInterface
     protected static $isContainsColumnStatistics = null;
 
     /**
+     * Cache for command --help output (mysqldump/mysql).
+     *
+     * @var array<string, string>
+     */
+    protected static array $commandHelpCache = [];
+
+    /**
      * Get a schema builder instance for the connection.
      *
      * @return MySqlBuilder
@@ -80,20 +87,18 @@ class MySqlConnection extends BaseConnection implements ConnectionInterface
 
         // mysqldump v8.0 or later, append "column-statistics=0" option
         // https://serverfault.com/questions/912162/mysqldump-throws-unknown-table-column-statistics-in-information-schema-1109
-        $column_statistics = static::isContainsColumnStatistics() ? '--column-statistics=0' : '';
-
         $mysqldump = static::getMysqlDumpPath();
-        $ls_output = shell_exec($mysqldump . ' --help');
-        if (strpos($ls_output, '--set-gtid-purged') !== false) {
-            $set_gtid = ' --set-gtid-purged=OFF';
-        } else {
-            $set_gtid = '';
-        }
+
+        $ls_output = static::getCommandHelp($mysqldump);
+        $column_statistics = static::isContainsColumnStatistics() ? '--column-statistics=0' : '';
+        $set_gtid = (strpos($ls_output, '--set-gtid-purged') !== false) ? '--set-gtid-purged=OFF' : '';
+        $disable_ssl = static::getDisableSslOptionFromHelp($ls_output);
+
+        $options = trim(implode(' ', array_filter([$column_statistics, $set_gtid, $disable_ssl])));
         $command = sprintf(
-            '%s %s %s --no-tablespaces -h %s -u %s --password=%s -P %s',
+            '%s %s --no-tablespaces -h %s -u %s --password=%s -P %s',
             $mysqldump,
-            $column_statistics,
-            $set_gtid,
+            $options,
             $host,
             $username,
             $password,
@@ -122,13 +127,9 @@ class MySqlConnection extends BaseConnection implements ConnectionInterface
             return static::$isContainsColumnStatistics;
         }
         $mysqldump = static::getMysqlDumpPath();
-        $command = sprintf(
-            '%s --help',
-            $mysqldump
-        );
-        exec($command, $output);
+        $help = static::getCommandHelp($mysqldump);
 
-        static::$isContainsColumnStatistics = collect($output)->contains(function ($o) {
+        static::$isContainsColumnStatistics = collect(explode("\n", $help))->contains(function ($o) {
             return strpos($o, 'column-statistics') !== false;
         });
 
@@ -258,9 +259,12 @@ class MySqlConnection extends BaseConnection implements ConnectionInterface
             $database = config('database.connections.mysql.database', '');
             $dbport = config('database.connections.mysql.port', '');
 
+            $disable_ssl = static::getDisableSslOption(static::getMysqlPath());
+
             $mysqlcmd = sprintf(
-                '%s -h %s -u %s --password=%s -P %s %s',
+                '%s %s -h %s -u %s --password=%s -P %s %s',
                 static::getMysqlPath(),
+                $disable_ssl,
                 $host,
                 $username,
                 $password,
@@ -375,5 +379,45 @@ __EOT__;
     protected static function getMysqlDumpPath()
     {
         return path_join_os(config('exment.backup_info.mysql_dir', ''), 'mysqldump');
+    }
+
+    /**
+     * Get cached "--help" output for a command.
+     */
+    protected static function getCommandHelp(string $commandPath): string
+    {
+        if (array_key_exists($commandPath, static::$commandHelpCache)) {
+            return static::$commandHelpCache[$commandPath];
+        }
+
+        $help = (string) shell_exec($commandPath . ' --help 2>&1');
+        static::$commandHelpCache[$commandPath] = $help;
+
+        return $help;
+    }
+
+    /**
+     * Return an option to disable SSL for mysql client tools when supported.
+     */
+    protected static function getDisableSslOption(string $commandPath): string
+    {
+        return static::getDisableSslOptionFromHelp(static::getCommandHelp($commandPath));
+    }
+
+    /**
+     * Return an option to disable SSL based on command help output.
+     */
+    protected static function getDisableSslOptionFromHelp(string $helpOutput): string
+    {
+        // MySQL 5.7+/8 supports --ssl-mode=DISABLED; MariaDB often supports --skip-ssl.
+        if (strpos($helpOutput, '--ssl-mode') !== false) {
+            return '--ssl-mode=DISABLED';
+        }
+
+        if (strpos($helpOutput, '--skip-ssl') !== false) {
+            return '--skip-ssl';
+        }
+
+        return '';
     }
 }
