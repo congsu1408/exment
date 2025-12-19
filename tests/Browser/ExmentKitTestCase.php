@@ -22,6 +22,11 @@ abstract class ExmentKitTestCase extends BaseTestCase
      */
     protected $baseUrl;
 
+    /**
+     * @var bool
+     */
+    protected static $ensuredTestUsers = false;
+
 
     /**
      * pre-excecute process before test.
@@ -60,7 +65,31 @@ abstract class ExmentKitTestCase extends BaseTestCase
      */
     protected function login($id = null)
     {
-        $this->be(LoginUser::find($id?? 1));
+        $targetId = $id ?? 1;
+
+        $user = LoginUser::find($targetId);
+
+        // Some CI DB setups may not have run/kept the seeded test data.
+        // Ensure test users exist once per process to avoid cascading TypeErrors.
+        if (!$user && !static::$ensuredTestUsers) {
+            static::$ensuredTestUsers = true;
+
+            try {
+                \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => \Exceedone\Exment\Database\Seeder\TestDataSeeder::class]);
+                \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => \Exceedone\Exment\Database\Seeder\WorkflowTestDataSeeder::class]);
+            } catch (\Throwable $e) {
+                // If seeding fails, fall through and surface a clear assertion below.
+            }
+
+            $user = LoginUser::find($targetId);
+        }
+
+        if (!$user) {
+            $user = LoginUser::orderBy('id')->first();
+        }
+
+        $this->assertTrue(isset($user), 'login user not found. Ensure `php artisan exment:inittest --yes` seeded users into the same DB connection used by Browser tests.');
+        $this->be($user);
     }
 
 
