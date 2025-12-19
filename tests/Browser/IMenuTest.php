@@ -55,6 +55,7 @@ class IMenuTest extends ExmentKitTestCase
 
 
     /**
+     * @depends testCreateMenuParent
      * @return void
      */
     public function testCreateMenuSystem()
@@ -71,7 +72,9 @@ class IMenuTest extends ExmentKitTestCase
         ]);
     }
 
+
     /**
+     * @depends testCreateMenuParent
      * @return void
      */
     public function testCreateMenuTable()
@@ -92,6 +95,7 @@ class IMenuTest extends ExmentKitTestCase
 
 
     /**
+     * @depends testCreateMenuParent
      * @return void
      */
     public function testCreateMenuTableView()
@@ -113,6 +117,7 @@ class IMenuTest extends ExmentKitTestCase
 
 
     /**
+     * @depends testCreateMenuParent
      * @return void
      */
     public function testCreateMenuCustomUrl()
@@ -131,6 +136,7 @@ class IMenuTest extends ExmentKitTestCase
 
 
     /**
+     * @depends testCreateMenuParent
      * @return void
      */
     public function testEditMenuParent()
@@ -144,6 +150,7 @@ class IMenuTest extends ExmentKitTestCase
 
 
     /**
+     * @depends testCreateMenuSystem
      * @return void
      */
     public function testEditMenuSystem()
@@ -159,6 +166,7 @@ class IMenuTest extends ExmentKitTestCase
 
 
     /**
+     * @depends testCreateMenuTable
      * @return void
      */
     public function testEditMenuTable()
@@ -174,6 +182,7 @@ class IMenuTest extends ExmentKitTestCase
 
 
     /**
+     * @depends testCreateMenuCustomUrl
      * @return void
      */
     public function testEditMenuCustomUrl()
