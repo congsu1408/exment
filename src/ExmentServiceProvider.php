@@ -292,6 +292,8 @@ class ExmentServiceProvider extends ServiceProvider
             'exment'
         );
 
+        $this->configureSqlServerTlsOptions();
+
         // register global middleware.
         $kernel = $this->app->make(Kernel::class);
         foreach ($this->middleware as $middleware) {
@@ -348,6 +350,33 @@ class ExmentServiceProvider extends ServiceProvider
         }
 
         Passport::ignoreMigrations();
+    }
+
+    /**
+     * Apply SQL Server TLS options from env into the runtime config.
+     *
+     * In some CI/Docker setups the host application's config/database.php may not include
+     * the Laravel 10+ sqlsrv keys (encrypt / trust_server_certificate). With ODBC Driver 18+
+     * this can cause connections to fail against containers using self-signed certificates.
+     */
+    protected function configureSqlServerTlsOptions(): void
+    {
+        $sqlsrv = \config('database.connections.sqlsrv');
+        if (!is_array($sqlsrv)) {
+            return;
+        }
+
+        $encrypt = \env('DB_ENCRYPT');
+        if (!is_null($encrypt)) {
+            $sqlsrv['encrypt'] = $encrypt;
+        }
+
+        $trustServerCertificate = \env('DB_TRUST_SERVER_CERTIFICATE');
+        if (!is_null($trustServerCertificate)) {
+            $sqlsrv['trust_server_certificate'] = $trustServerCertificate;
+        }
+
+        \config(['database.connections.sqlsrv' => $sqlsrv]);
     }
 
     protected function publish()
