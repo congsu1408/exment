@@ -30,7 +30,8 @@ abstract class ExmentKitTestCase extends BaseTestCase
     protected function setUp(): void
     {
         // cannot call method "config", so call env function
-        $this->baseUrl = env('APP_URL');
+        $appUrl = \env('APP_URL');
+        $this->baseUrl = !is_null($appUrl) && $appUrl !== '' ? rtrim($appUrl, '/') : 'http://localhost';
         parent::setUp();
         System::clearCache();
     }
