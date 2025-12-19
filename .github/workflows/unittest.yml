@@ -56,6 +56,11 @@ jobs:
         run: |
           make ${{ matrix.db }}-init
 
+      - name: Display ${{ matrix.db }} Version
+        working-directory: docker-exment
+        run: |
+          docker compose -f docker-compose.yml exec -T ${{ matrix.db }} ${{ matrix.db }} --version
+
       - name: PHPUnit Test
         working-directory: docker-exment
         run: |
