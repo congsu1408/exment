@@ -490,6 +490,8 @@ class ExmentServiceProvider extends ServiceProvider
      */
     protected function bootDatabase()
     {
+        $this->configureSqlServerForTesting();
+
         Connection::resolverFor('mysql', function (...$parameters) {
             return new ExmentDatabase\MySqlConnection(...$parameters);
         });
@@ -499,6 +501,52 @@ class ExmentServiceProvider extends ServiceProvider
         Connection::resolverFor('sqlsrv', function (...$parameters) {
             return new ExmentDatabase\SqlServerConnection(...$parameters);
         });
+    }
+
+    /**
+     * Configure sqlsrv connections for CI/testing.
+     *
+     * ODBC Driver 18 validates certificates by default and fails when using
+     * self-signed certs in ephemeral test containers.
+     */
+    protected function configureSqlServerForTesting(): void
+    {
+        try {
+            if (!(app()->environment(['testing', 'local']) || env('GITHUB_ACTIONS'))) {
+                return;
+            }
+
+            $connections = config('database.connections', []);
+            if (!is_array($connections) || empty($connections)) {
+                return;
+            }
+
+            $updated = false;
+            foreach ($connections as $name => $connection) {
+                if (!is_array($connection) || (($connection['driver'] ?? null) !== 'sqlsrv')) {
+                    continue;
+                }
+
+                // Align with ODBC connection keywords: Encrypt=yes;TrustServerCertificate=yes
+                if (!array_key_exists('encrypt', $connection)) {
+                    $connection['encrypt'] = 'yes';
+                    $updated = true;
+                }
+
+                if (!array_key_exists('trust_server_certificate', $connection)) {
+                    $connection['trust_server_certificate'] = 'yes';
+                    $updated = true;
+                }
+
+                $connections[$name] = $connection;
+            }
+
+            if ($updated) {
+                config(['database.connections' => $connections]);
+            }
+        } catch (\Throwable $e) {
+            // Never block boot for optional CI-only config.
+        }
     }
 
     /**
