@@ -19,7 +19,6 @@ class MultiUniqueValueTest extends UnitTestBase
         $custom_table = $this->initUniqueValueTest(['text', 'decimal']);
 
         $result = $custom_table->validatorUniques(['value' => ['text' => 'hogehoge_unique', 'decimal' => 1.234 ]]);
-
         $this->assertTrue(count($result) == 0);
     }
 
