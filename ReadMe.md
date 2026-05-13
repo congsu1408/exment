@@ -2,7 +2,6 @@
 <img src="https://exment.net/docs/img/common/exment_logo_side.png" alt="Exment">
 </p>
 
-Test ci action
 
 ## For Japanese(日本語)
 こちらのサイトにアクセスしてください。  
